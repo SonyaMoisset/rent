@@ -1453,6 +1453,6 @@ catch(err) {
 });
 
 if (!runningTests) {
-  require("rent/app")["default"].create({"name":"rent","version":"0.0.0+9551ac57"});
+  require("rent/app")["default"].create({"name":"rent","version":"0.0.0+d1bb637c"});
 }
 //# sourceMappingURL=rent.map
