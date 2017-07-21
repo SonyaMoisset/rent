@@ -45,6 +45,16 @@ define('rent/tests/app.lint-test', [], function () {
     assert.ok(true, 'components/update-rental.js should pass ESLint\n\n');
   });
 
+  QUnit.test('helpers/rental-cost.js', function (assert) {
+    assert.expect(1);
+    assert.ok(true, 'helpers/rental-cost.js should pass ESLint\n\n');
+  });
+
+  QUnit.test('helpers/rental-popularity.js', function (assert) {
+    assert.expect(1);
+    assert.ok(true, 'helpers/rental-popularity.js should pass ESLint\n\n');
+  });
+
   QUnit.test('models/rental.js', function (assert) {
     assert.expect(1);
     assert.ok(true, 'models/rental.js should pass ESLint\n\n');
@@ -531,6 +541,46 @@ define('rent/tests/integration/components/update-rental-test', ['ember-qunit'], 
     assert.equal(this.$().text().trim(), 'template block text');
   });
 });
+define('rent/tests/integration/helpers/rental-cost-test', ['ember-qunit'], function (_emberQunit) {
+  'use strict';
+
+  (0, _emberQunit.moduleForComponent)('rental-cost', 'helper:rental-cost', {
+    integration: true
+  });
+
+  // Replace this with your real tests.
+  (0, _emberQunit.test)('it renders', function (assert) {
+    this.set('inputValue', '1234');
+
+    this.render(Ember.HTMLBars.template({
+      "id": "Vo7ipgTZ",
+      "block": "{\"statements\":[[1,[33,[\"rental-cost\"],[[28,[\"inputValue\"]]],null],false]],\"locals\":[],\"named\":[],\"yields\":[],\"hasPartials\":false}",
+      "meta": {}
+    }));
+
+    assert.equal(this.$().text().trim(), '1234');
+  });
+});
+define('rent/tests/integration/helpers/rental-popularity-test', ['ember-qunit'], function (_emberQunit) {
+  'use strict';
+
+  (0, _emberQunit.moduleForComponent)('rental-popularity', 'helper:rental-popularity', {
+    integration: true
+  });
+
+  // Replace this with your real tests.
+  (0, _emberQunit.test)('it renders', function (assert) {
+    this.set('inputValue', '1234');
+
+    this.render(Ember.HTMLBars.template({
+      "id": "eR7P+hzv",
+      "block": "{\"statements\":[[1,[33,[\"rental-popularity\"],[[28,[\"inputValue\"]]],null],false]],\"locals\":[],\"named\":[],\"yields\":[],\"hasPartials\":false}",
+      "meta": {}
+    }));
+
+    assert.equal(this.$().text().trim(), '1234');
+  });
+});
 define('rent/tests/test-helper', ['rent/tests/helpers/resolver', 'ember-qunit', 'ember-cli-qunit'], function (_resolver, _emberQunit, _emberCliQunit) {
   'use strict';
 
@@ -590,6 +640,16 @@ define('rent/tests/tests.lint-test', [], function () {
   QUnit.test('integration/components/update-rental-test.js', function (assert) {
     assert.expect(1);
     assert.ok(true, 'integration/components/update-rental-test.js should pass ESLint\n\n');
+  });
+
+  QUnit.test('integration/helpers/rental-cost-test.js', function (assert) {
+    assert.expect(1);
+    assert.ok(true, 'integration/helpers/rental-cost-test.js should pass ESLint\n\n');
+  });
+
+  QUnit.test('integration/helpers/rental-popularity-test.js', function (assert) {
+    assert.expect(1);
+    assert.ok(true, 'integration/helpers/rental-popularity-test.js should pass ESLint\n\n');
   });
 
   QUnit.test('test-helper.js', function (assert) {

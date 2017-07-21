@@ -800,11 +800,12 @@ define('rent/components/new-rental', ['exports', 'ember'], function (exports, _e
       },
       saveRental1: function saveRental1() {
         var params = {
-          owner: this.get('owner') ? this.get('owner') : "",
-          city: this.get('city') ? this.get('city') : "",
-          type: this.get('type') ? this.get('type') : "",
-          image: this.get('image') ? this.get('image') : "",
-          bedrooms: this.get('bedrooms') ? this.get('bedrooms') : ""
+          owner: this.get('owner'),
+          city: this.get('city'),
+          type: this.get('type'),
+          image: this.get('image'),
+          bedrooms: this.get('bedrooms'),
+          cost: parseInt(this.get('cost'))
         };
         this.set('addNewRental', false);
         this.sendAction('saveRental2', params);
@@ -826,9 +827,9 @@ define('rent/components/new-review', ['exports', 'ember'], function (exports, _e
       },
       saveReview: function saveReview() {
         var params = {
-          author: this.get('author') ? this.get('author') : "",
-          rating: this.get('rating') ? this.get('rating') : "",
-          content: this.get('content') ? this.get('content') : "",
+          author: this.get('author'),
+          rating: parseInt(this.get('rating')),
+          content: this.get('content'),
           rental: this.get('rental')
         };
         this.set('addNewReview', false);
@@ -844,11 +845,18 @@ define('rent/components/rental-detail', ['exports', 'ember'], function (exports,
     value: true
   });
   exports.default = _ember.default.Component.extend({
+
+    sortBy: ['rating:desc'],
+    sortedReviews: _ember.default.computed.sort('rental.reviews', 'sortBy'),
+
     actions: {
       delete: function _delete(rental) {
         if (confirm('Are you sure you want to delete this rental?')) {
           this.sendAction('destroyRental', rental);
         }
+      },
+      destroyReview: function destroyReview(review) {
+        this.sendAction('destroyReview', review);
       }
     }
   });
@@ -877,7 +885,20 @@ define('rent/components/review-tile', ['exports', 'ember'], function (exports, _
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = _ember.default.Component.extend({});
+  exports.default = _ember.default.Component.extend({
+
+    heading: _ember.default.computed('review.author', 'review.rating', function () {
+      return this.get('review.author') + ' - ' + this.get('review.rating');
+    }),
+
+    actions: {
+      delete: function _delete(review) {
+        if (confirm('Are you sure you want to delete this review?')) {
+          this.sendAction('destroyReview', review);
+        }
+      }
+    }
+  });
 });
 define('rent/components/update-rental', ['exports', 'ember'], function (exports, _ember) {
   'use strict';
@@ -987,6 +1008,46 @@ define('rent/helpers/pluralize', ['exports', 'ember-inflector/lib/helpers/plural
     value: true
   });
   exports.default = _pluralize.default;
+});
+define('rent/helpers/rental-cost', ['exports', 'ember'], function (exports, _ember) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.rentalCost = rentalCost;
+  function rentalCost(params) {
+    var rentalPrice = params[0].get('cost');
+
+    if (rentalPrice >= 150) {
+      return "$$$$";
+    } else if (rentalPrice >= 100) {
+      return "$$$";
+    } else if (rentalPrice >= 50) {
+      return "$$";
+    } else if (rentalPrice <= 49) {
+      return "$";
+    }
+  }
+
+  exports.default = _ember.default.Helper.helper(rentalCost);
+});
+define('rent/helpers/rental-popularity', ['exports', 'ember'], function (exports, _ember) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.rentalPopularity = rentalPopularity;
+  function rentalPopularity(params) {
+    var rental = params[0];
+
+    if (rental.get('reviews').get('length') >= 5) {
+      return _ember.default.String.htmlSafe('<span class="glyphicon glyphicon-fire"></span>');
+    }
+  }
+
+  exports.default = _ember.default.Helper.helper(rentalPopularity);
 });
 define('rent/helpers/singularize', ['exports', 'ember-inflector/lib/helpers/singularize'], function (exports, _singularize) {
   'use strict';
@@ -1183,7 +1244,8 @@ define('rent/models/rental', ['exports', 'ember-data'], function (exports, _embe
     type: _emberData.default.attr(),
     image: _emberData.default.attr(),
     bedroom: _emberData.default.attr(),
-    reviews: _emberData.default.hasMany('review', { async: true })
+    reviews: _emberData.default.hasMany('review', { async: true }),
+    cost: _emberData.default.attr()
   });
 });
 define('rent/models/review', ['exports', 'ember-data'], function (exports, _emberData) {
@@ -1300,7 +1362,16 @@ define('rent/routes/rental', ['exports', 'ember'], function (exports, _ember) {
         this.transitionTo('rental', rental);
       },
       destroyRental: function destroyRental(rental) {
-        rental.destroyRecord();
+        var review_deletions = rental.get('reviews').map(function (review) {
+          return review.destroyRecord();
+        });
+        _ember.default.RSVP.all(review_deletions).then(function () {
+          return rental.destroyRecord();
+        });
+        this.transitionTo('index');
+      },
+      destroyReview: function destroyReview(review) {
+        review.destroyRecord();
         this.transitionTo('index');
       }
     }
@@ -1357,7 +1428,7 @@ define("rent/templates/components/new-rental", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "lsNrQM0x", "block": "{\"statements\":[[6,[\"if\"],[[28,[\"addNewRental\"]]],null,{\"statements\":[[0,\"  \"],[11,\"h1\",[]],[13],[0,\"New Rental\"],[14],[0,\"\\n  \"],[11,\"div\",[]],[13],[0,\"\\n    \"],[11,\"form\",[]],[13],[0,\"\\n      \"],[11,\"div\",[]],[15,\"class\",\"form-group\"],[13],[0,\"\\n        \"],[11,\"label\",[]],[15,\"for\",\"owner\"],[13],[0,\"Owner\"],[14],[0,\" \"],[1,[33,[\"input\"],null,[[\"value\",\"id\"],[[28,[\"owner\"]],\"owner\"]]],false],[0,\"\\n      \"],[14],[0,\"\\n\\n      \"],[11,\"div\",[]],[15,\"class\",\"form-group\"],[13],[0,\"\\n        \"],[11,\"label\",[]],[15,\"for\",\"type\"],[13],[0,\"Type\"],[14],[0,\" \"],[1,[33,[\"input\"],null,[[\"value\",\"id\"],[[28,[\"type\"]],\"type\"]]],false],[0,\"\\n      \"],[14],[0,\"\\n\\n      \"],[11,\"div\",[]],[15,\"class\",\"form-group\"],[13],[0,\"\\n        \"],[11,\"label\",[]],[15,\"for\",\"city\"],[13],[0,\"City\"],[14],[0,\" \"],[1,[33,[\"input\"],null,[[\"value\",\"id\"],[[28,[\"city\"]],\"city\"]]],false],[0,\"\\n      \"],[14],[0,\"\\n\\n      \"],[11,\"div\",[]],[15,\"class\",\"form-group\"],[13],[0,\"\\n        \"],[11,\"label\",[]],[15,\"for\",\"bedrooms\"],[13],[0,\"Number of Bedrooms\"],[14],[0,\" \"],[1,[33,[\"input\"],null,[[\"value\",\"id\"],[[28,[\"bedrooms\"]],\"bedrooms\"]]],false],[0,\"\\n      \"],[14],[0,\"\\n\\n      \"],[11,\"div\",[]],[15,\"class\",\"form-group\"],[13],[0,\"\\n        \"],[11,\"label\",[]],[15,\"for\",\"image\"],[13],[0,\"Image URL\"],[14],[0,\" \"],[1,[33,[\"input\"],null,[[\"value\",\"id\"],[[28,[\"image\"]],\"image\"]]],false],[0,\"\\n      \"],[14],[0,\"\\n\\n      \"],[11,\"button\",[]],[5,[\"action\"],[[28,[null]],\"saveRental1\"]],[13],[0,\"Save\"],[14],[0,\"\\n    \"],[14],[0,\"\\n  \"],[14],[0,\"\\n\"]],\"locals\":[]},{\"statements\":[[0,\"  \"],[11,\"button\",[]],[5,[\"action\"],[[28,[null]],\"rentalFormShow\"]],[13],[0,\"New Rental\"],[14],[0,\"\\n\"]],\"locals\":[]}]],\"locals\":[],\"named\":[],\"yields\":[],\"hasPartials\":false}", "meta": { "moduleName": "rent/templates/components/new-rental.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "I/V+jbEv", "block": "{\"statements\":[[6,[\"if\"],[[28,[\"addNewRental\"]]],null,{\"statements\":[[0,\"  \"],[11,\"h1\",[]],[13],[0,\"New Rental\"],[14],[0,\"\\n  \"],[11,\"div\",[]],[13],[0,\"\\n    \"],[11,\"form\",[]],[13],[0,\"\\n      \"],[11,\"div\",[]],[15,\"class\",\"form-group\"],[13],[0,\"\\n        \"],[11,\"label\",[]],[15,\"for\",\"owner\"],[13],[0,\"Owner\"],[14],[0,\"\\n        \"],[1,[33,[\"input\"],null,[[\"value\",\"id\"],[[28,[\"owner\"]],\"owner\"]]],false],[0,\"\\n      \"],[14],[0,\"\\n\\n      \"],[11,\"div\",[]],[15,\"class\",\"form-group\"],[13],[0,\"\\n        \"],[11,\"label\",[]],[15,\"for\",\"type\"],[13],[0,\"Type\"],[14],[0,\"\\n        \"],[1,[33,[\"input\"],null,[[\"value\",\"id\"],[[28,[\"type\"]],\"type\"]]],false],[0,\"\\n      \"],[14],[0,\"\\n\\n      \"],[11,\"div\",[]],[15,\"class\",\"form-group\"],[13],[0,\"\\n        \"],[11,\"label\",[]],[15,\"for\",\"city\"],[13],[0,\"City\"],[14],[0,\"\\n        \"],[1,[33,[\"input\"],null,[[\"value\",\"id\"],[[28,[\"city\"]],\"city\"]]],false],[0,\"\\n      \"],[14],[0,\"\\n\\n      \"],[11,\"div\",[]],[15,\"class\",\"form-group\"],[13],[0,\"\\n        \"],[11,\"label\",[]],[15,\"for\",\"bedrooms\"],[13],[0,\"Number of Bedrooms\"],[14],[0,\"\\n        \"],[1,[33,[\"input\"],null,[[\"value\",\"id\"],[[28,[\"bedrooms\"]],\"bedrooms\"]]],false],[0,\"\\n      \"],[14],[0,\"\\n\\n      \"],[11,\"div\",[]],[15,\"class\",\"form-group\"],[13],[0,\"\\n        \"],[11,\"label\",[]],[15,\"for\",\"image\"],[13],[0,\"Image URL\"],[14],[0,\"\\n        \"],[1,[33,[\"input\"],null,[[\"value\",\"id\"],[[28,[\"image\"]],\"image\"]]],false],[0,\"\\n      \"],[14],[0,\"\\n\\n      \"],[11,\"div\",[]],[15,\"class\",\"form-group\"],[13],[0,\"\\n        \"],[11,\"label\",[]],[15,\"for\",\"cost\"],[13],[0,\"Cost per night\"],[14],[0,\"\\n        \"],[1,[33,[\"input\"],null,[[\"value\",\"id\"],[[28,[\"cost\"]],\"cost\"]]],false],[0,\"\\n      \"],[14],[0,\"\\n\\n      \"],[11,\"button\",[]],[5,[\"action\"],[[28,[null]],\"saveRental1\"]],[13],[0,\"Save\"],[14],[0,\"\\n    \"],[14],[0,\"\\n  \"],[14],[0,\"\\n\"]],\"locals\":[]},{\"statements\":[[0,\"  \"],[11,\"button\",[]],[5,[\"action\"],[[28,[null]],\"rentalFormShow\"]],[13],[0,\"New Rental\"],[14],[0,\"\\n\"]],\"locals\":[]}]],\"locals\":[],\"named\":[],\"yields\":[],\"hasPartials\":false}", "meta": { "moduleName": "rent/templates/components/new-rental.hbs" } });
 });
 define("rent/templates/components/new-review", ["exports"], function (exports) {
   "use strict";
@@ -1373,7 +1444,7 @@ define("rent/templates/components/rental-detail", ["exports"], function (exports
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "dS/wGNR9", "block": "{\"statements\":[[11,\"p\",[]],[13],[0,\"Located in \"],[1,[28,[\"rental\",\"city\"]],false],[0,\", this \"],[1,[28,[\"rental\",\"bedrooms\"]],false],[0,\" bedroom \"],[1,[28,[\"rental\",\"type\"]],false],[0,\" is available by arrangement through \"],[1,[28,[\"rental\",\"owner\"]],false],[0,\".\"],[14],[0,\"\\n\"],[11,\"br\",[]],[13],[14],[0,\"\\n\"],[11,\"p\",[]],[13],[11,\"img\",[]],[16,\"src\",[34,[[28,[\"rental\",\"image\"]]]]],[16,\"alt\",[28,[\"rental\",\"type\"]],null],[13],[14],[14],[0,\"\\n\\n\"],[11,\"h2\",[]],[13],[0,\"Reviews\"],[14],[0,\"\\n\"],[11,\"ul\",[]],[13],[0,\"\\n\"],[6,[\"each\"],[[28,[\"rental\",\"reviews\"]]],null,{\"statements\":[[0,\"    \"],[1,[33,[\"review-tile\"],null,[[\"review\"],[[28,[\"review\"]]]]],false],[0,\"\\n\"]],\"locals\":[\"review\"]},null],[14],[0,\"\\n\\n\"],[11,\"button\",[]],[5,[\"action\"],[[28,[null]],\"delete\",[28,[\"rental\"]]]],[13],[0,\"Delete\"],[14]],\"locals\":[],\"named\":[],\"yields\":[],\"hasPartials\":false}", "meta": { "moduleName": "rent/templates/components/rental-detail.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "vxRdfmwS", "block": "{\"statements\":[[11,\"p\",[]],[13],[0,\"Located in \"],[1,[28,[\"rental\",\"city\"]],false],[0,\", this \"],[1,[28,[\"rental\",\"bedrooms\"]],false],[0,\" bedroom \"],[1,[28,[\"rental\",\"type\"]],false],[0,\" is available by arrangement through \"],[1,[28,[\"rental\",\"owner\"]],false],[0,\".\"],[14],[0,\"\\n\"],[11,\"br\",[]],[13],[14],[0,\"\\n\"],[11,\"p\",[]],[13],[11,\"img\",[]],[16,\"src\",[34,[[28,[\"rental\",\"image\"]]]]],[16,\"alt\",[28,[\"rental\",\"type\"]],null],[13],[14],[14],[0,\"\\n\\n\"],[11,\"h2\",[]],[13],[0,\"Reviews\"],[14],[0,\"\\n\"],[11,\"ul\",[]],[13],[0,\"\\n\"],[6,[\"each\"],[[28,[\"sortedReviews\"]]],null,{\"statements\":[[0,\"    \"],[1,[33,[\"review-tile\"],null,[[\"review\",\"destroyReview\"],[[28,[\"review\"]],\"destroyReview\"]]],false],[0,\"\\n\"]],\"locals\":[\"review\"]},null],[14],[0,\"\\n\\n\"],[11,\"button\",[]],[5,[\"action\"],[[28,[null]],\"delete\",[28,[\"rental\"]]]],[13],[0,\"Delete\"],[14]],\"locals\":[],\"named\":[],\"yields\":[],\"hasPartials\":false}", "meta": { "moduleName": "rent/templates/components/rental-detail.hbs" } });
 });
 define("rent/templates/components/rental-tile", ["exports"], function (exports) {
   "use strict";
@@ -1381,7 +1452,7 @@ define("rent/templates/components/rental-tile", ["exports"], function (exports) 
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "ey/mFVYT", "block": "{\"statements\":[[11,\"li\",[]],[13],[0,\"\\n  \"],[6,[\"link-to\"],[\"rental\",[28,[\"rental\",\"id\"]]],null,{\"statements\":[[1,[28,[\"rental\",\"owner\"]],false],[0,\"'s \"],[1,[28,[\"rental\",\"type\"]],false],[0,\" in \"],[1,[28,[\"rental\",\"city\"]],false],[0,\" \"]],\"locals\":[]},null],[0,\" \"],[6,[\"if\"],[[28,[\"isImageShowing\"]]],null,{\"statements\":[[0,\"\\n  \"],[11,\"p\",[]],[13],[11,\"img\",[]],[16,\"src\",[28,[\"rental\",\"image\"]],null],[16,\"alt\",[28,[\"rental\",\"type\"]],null],[5,[\"action\"],[[28,[null]],\"imageHide\"]],[13],[14],[14],[0,\"\\n\"]],\"locals\":[]},{\"statements\":[[0,\"  \"],[11,\"button\",[]],[5,[\"action\"],[[28,[null]],\"imageShow\"]],[13],[0,\"Image\"],[14],[0,\" \"]],\"locals\":[]}],[0,\"\\n\"],[14]],\"locals\":[],\"named\":[],\"yields\":[],\"hasPartials\":false}", "meta": { "moduleName": "rent/templates/components/rental-tile.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "qnH/MmRL", "block": "{\"statements\":[[11,\"li\",[]],[13],[0,\"\\n  \"],[6,[\"link-to\"],[\"rental\",[28,[\"rental\",\"id\"]]],null,{\"statements\":[[1,[28,[\"rental\",\"owner\"]],false],[0,\"'s \"],[1,[28,[\"rental\",\"type\"]],false],[0,\" in \"],[1,[28,[\"rental\",\"city\"]],false],[0,\" \"]],\"locals\":[]},null],[0,\"\\n\"],[6,[\"if\"],[[28,[\"isImageShowing\"]]],null,{\"statements\":[[0,\"    \"],[11,\"p\",[]],[13],[11,\"img\",[]],[16,\"src\",[28,[\"rental\",\"image\"]],null],[16,\"alt\",[28,[\"rental\",\"type\"]],null],[5,[\"action\"],[[28,[null]],\"imageHide\"]],[13],[14],[14],[0,\"\\n\"]],\"locals\":[]},{\"statements\":[[0,\"    \"],[11,\"button\",[]],[5,[\"action\"],[[28,[null]],\"imageShow\"]],[13],[0,\"Image\"],[14],[0,\"\\n\"]],\"locals\":[]}],[14]],\"locals\":[],\"named\":[],\"yields\":[],\"hasPartials\":false}", "meta": { "moduleName": "rent/templates/components/rental-tile.hbs" } });
 });
 define("rent/templates/components/review-tile", ["exports"], function (exports) {
   "use strict";
@@ -1389,7 +1460,7 @@ define("rent/templates/components/review-tile", ["exports"], function (exports) 
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "FMNwgBmU", "block": "{\"statements\":[[11,\"li\",[]],[13],[1,[28,[\"review\",\"rating\"]],false],[0,\" = \"],[1,[28,[\"review\",\"content\"]],false],[0,\" - by \"],[1,[28,[\"review\",\"author\"]],false],[14]],\"locals\":[],\"named\":[],\"yields\":[],\"hasPartials\":false}", "meta": { "moduleName": "rent/templates/components/review-tile.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "lXg6dO03", "block": "{\"statements\":[[11,\"li\",[]],[13],[0,\"\\n\"],[11,\"h3\",[]],[13],[1,[26,[\"heading\"]],false],[14],[0,\"\\n\"],[11,\"p\",[]],[13],[1,[28,[\"review\",\"content\"]],false],[14],[0,\"\\n\"],[14],[0,\"\\n\\n\"],[11,\"button\",[]],[5,[\"action\"],[[28,[null]],\"delete\",[28,[\"review\"]]]],[13],[0,\"Delete Review\"],[14]],\"locals\":[],\"named\":[],\"yields\":[],\"hasPartials\":false}", "meta": { "moduleName": "rent/templates/components/review-tile.hbs" } });
 });
 define("rent/templates/components/update-rental", ["exports"], function (exports) {
   "use strict";
@@ -1413,7 +1484,7 @@ define("rent/templates/index", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "v6BF4xAx", "block": "{\"statements\":[[11,\"h1\",[]],[13],[0,\"Welcome to Super Rentals\"],[14],[0,\"\\n\\n\"],[11,\"p\",[]],[13],[0,\"We hope you find exactly what you're looking for in a place to stay.\"],[14],[0,\"\\n\\n\"],[11,\"ul\",[]],[13],[0,\"\\n\"],[6,[\"each\"],[[28,[\"model\",\"rentals\"]]],null,{\"statements\":[[0,\"    \"],[1,[33,[\"rental-tile\"],null,[[\"rental\"],[[28,[\"rental\"]]]]],false],[0,\"\\n\"]],\"locals\":[\"rental\"]},null],[14],[0,\"\\n\\n\"],[1,[33,[\"new-rental\"],null,[[\"saveRental2\"],[\"saveRental3\"]]],false],[0,\"\\n\\n\"],[11,\"h2\",[]],[13],[0,\"All Reviews\"],[14],[0,\"\\n\\n\"],[11,\"ul\",[]],[13],[0,\"\\n\"],[6,[\"each\"],[[28,[\"model\",\"reviews\"]]],null,{\"statements\":[[0,\"    \"],[11,\"li\",[]],[13],[1,[28,[\"review\",\"rating\"]],false],[0,\" - \"],[1,[28,[\"review\",\"content\"]],false],[0,\" - by \"],[1,[28,[\"review\",\"author\"]],false],[14],[0,\"\\n\"]],\"locals\":[\"review\"]},null],[14],[0,\"\\n\"]],\"locals\":[],\"named\":[],\"yields\":[],\"hasPartials\":false}", "meta": { "moduleName": "rent/templates/index.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "FgYjPleN", "block": "{\"statements\":[[11,\"h1\",[]],[13],[0,\"Welcome to Super Rentals\"],[14],[0,\"\\n\\n\"],[11,\"p\",[]],[13],[0,\"We hope you find exactly what you're looking for in a place to stay.\"],[14],[0,\"\\n\\n\"],[11,\"h2\",[]],[13],[0,\"Available Rentals\"],[14],[0,\"\\n\\n\"],[11,\"ul\",[]],[13],[0,\"\\n\"],[6,[\"each\"],[[28,[\"model\",\"rentals\"]]],null,{\"statements\":[[0,\"    \"],[1,[33,[\"rental-popularity\"],[[28,[\"rental\"]]],null],false],[0,\" \"],[1,[33,[\"rental-tile\"],null,[[\"rental\"],[[28,[\"rental\"]]]]],false],[0,\" \"],[1,[33,[\"rental-cost\"],[[28,[\"rental\"]]],null],false],[0,\"\\n\"]],\"locals\":[\"rental\"]},null],[14],[0,\"\\n\\n\"],[1,[33,[\"new-rental\"],null,[[\"saveRental2\"],[\"saveRental3\"]]],false],[0,\"\\n\\n\"],[11,\"h2\",[]],[13],[0,\"All Reviews\"],[14],[0,\"\\n\\n\"],[11,\"ul\",[]],[13],[0,\"\\n\"],[6,[\"each\"],[[28,[\"model\",\"reviews\"]]],null,{\"statements\":[[0,\"    \"],[11,\"li\",[]],[13],[1,[28,[\"review\",\"rating\"]],false],[0,\" - \"],[1,[28,[\"review\",\"content\"]],false],[0,\" - by \"],[1,[28,[\"review\",\"author\"]],false],[14],[0,\"\\n\"]],\"locals\":[\"review\"]},null],[14],[0,\"\\n\"]],\"locals\":[],\"named\":[],\"yields\":[],\"hasPartials\":false}", "meta": { "moduleName": "rent/templates/index.hbs" } });
 });
 define("rent/templates/rental", ["exports"], function (exports) {
   "use strict";
@@ -1421,7 +1492,7 @@ define("rent/templates/rental", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "OOLaYZHW", "block": "{\"statements\":[[11,\"h2\",[]],[13],[0,\"More information about \"],[1,[28,[\"model\",\"owner\"]],false],[0,\"'s \"],[1,[28,[\"model\",\"type\"]],false],[14],[0,\"\\n\\n\"],[1,[33,[\"update-rental\"],null,[[\"rental\",\"update\"],[[28,[\"model\"]],\"update\"]]],false],[0,\"\\n\\n\"],[1,[33,[\"rental-detail\"],null,[[\"rental\",\"destroyRentla\"],[[28,[\"model\"]],\"destroyRental\"]]],false],[0,\"\\n\\n\"],[1,[33,[\"new-review\"],null,[[\"saveReview\",\"rental\"],[\"saveReview\",[28,[\"model\"]]]]],false]],\"locals\":[],\"named\":[],\"yields\":[],\"hasPartials\":false}", "meta": { "moduleName": "rent/templates/rental.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "AsNTiKIY", "block": "{\"statements\":[[11,\"h2\",[]],[13],[0,\"More information about \"],[1,[28,[\"model\",\"owner\"]],false],[0,\"'s \"],[1,[28,[\"model\",\"type\"]],false],[14],[0,\"\\n\\n\"],[1,[33,[\"update-rental\"],null,[[\"rental\",\"update\"],[[28,[\"model\"]],\"update\"]]],false],[0,\"\\n\\n\"],[1,[33,[\"rental-detail\"],null,[[\"rental\",\"destroyRental\",\"destroyReview\"],[[28,[\"model\"]],\"destroyRental\",\"destroyReview\"]]],false],[0,\"\\n\\n\"],[1,[33,[\"new-review\"],null,[[\"saveReview\",\"rental\"],[\"saveReview\",[28,[\"model\"]]]]],false]],\"locals\":[],\"named\":[],\"yields\":[],\"hasPartials\":false}", "meta": { "moduleName": "rent/templates/rental.hbs" } });
 });
 define('rent/torii-providers/firebase', ['exports', 'emberfire/torii-providers/firebase'], function (exports, _firebase) {
   'use strict';
@@ -1453,6 +1524,6 @@ catch(err) {
 });
 
 if (!runningTests) {
-  require("rent/app")["default"].create({"name":"rent","version":"0.0.0+d1bb637c"});
+  require("rent/app")["default"].create({"name":"rent","version":"0.0.0+bef5adaa"});
 }
 //# sourceMappingURL=rent.map
