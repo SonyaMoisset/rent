@@ -2,9 +2,11 @@
 
 <p>We hope you find exactly what you're looking for in a place to stay.</p>
 
+<h2>Available Rentals</h2>
+
 <ul>
   {{#each model.rentals as |rental|}}
-    {{rental-tile rental=rental}}
+    {{rental-popularity rental}} {{rental-tile rental=rental}} {{rental-cost rental}}
   {{/each}}
 </ul>
 
